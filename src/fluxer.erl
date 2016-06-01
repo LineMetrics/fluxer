@@ -65,8 +65,8 @@ write(DB, Measurement, Value) ->
 
 write(DB, Measurement, [], Value) ->
     write(DB, line(Measurement, Value));
-write(DB, Measurement, Tags, Value) ->
-    write(DB, line(Measurement, Tags, Value)).
+write(DB, Measurement, Tags, Values) ->
+    write(DB, line(Measurement, Tags, Values)).
 
 write(DB, Data) when is_list(Data) ->
     write(DB, list_to_binary(Data));
@@ -112,9 +112,9 @@ compose_batch_2([{Measurement, Value} | Rest], Acc) ->
 line(Measurement, Value) ->
     iolist_to_binary([to_binary(Measurement), <<" value=">>, maybe_integer(Value)]).
 
-line(Measurement, Tags, Value) ->
+line(Measurement, Tags, Values) ->
     iolist_to_binary([to_binary(Measurement), <<",">>, compose_tags(Tags),
-                      <<" value=">>, maybe_integer(Value)]).
+                      <<" ">>, compose_tags(Values)]).
 
 -spec select_2(string() | binary() | atom(), string() | binary()) -> term().
 select_2(DB, Query) ->
