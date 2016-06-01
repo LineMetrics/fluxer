@@ -5,7 +5,7 @@
 -export([create_database/1]).
 -export([create_database/2]).
 -export([show_databases/0]).
--export([write/2, write/3, write/4]).
+-export([write/2, write/3, write/4, write/5]).
 -export([write_batch/3]).
 -export([select/2, select/3]).
 -export([query/2]).
@@ -68,6 +68,9 @@ write(DB, Measurement, [], Value) ->
 write(DB, Measurement, Tags, Values) ->
     write(DB, line(Measurement, Tags, Values)).
 
+write(DB, Measurement, Tags, Values, TimeStamp) ->
+    write(DB, line(Measurement, Tags, Values, TimeStamp)).
+
 write(DB, Data) when is_list(Data) ->
     write(DB, list_to_binary(Data));
 write(DB, Data) when is_binary(Data) ->
@@ -115,6 +118,11 @@ line(Measurement, Value) ->
 line(Measurement, Tags, Values) ->
     iolist_to_binary([to_binary(Measurement), <<",">>, compose_tags(Tags),
                       <<" ">>, compose_tags(Values)]).
+
+line(Measurement, Tags, Values, TimeStamp) ->
+    BinLine = line(Measurement, Tags, Values),
+    TimeBin = to_binary(TimeStamp),
+    <<BinLine/binary, " ", TimeBin/binary>>.
 
 -spec select_2(string() | binary() | atom(), string() | binary()) -> term().
 select_2(DB, Query) ->
