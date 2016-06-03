@@ -6,7 +6,7 @@
 -export([create_database/2]).
 -export([show_databases/0]).
 -export([write/2, write/3, write/4, write/5]).
--export([write_batch/3]).
+-export([write_batch/2]).
 -export([select/2, select/3]).
 -export([query/2]).
 
@@ -56,8 +56,8 @@ select(DB, Measurement, Cols) ->
     Query = <<"SELECT ", ComposedCols/binary, " FROM ", (to_binary(Measurement))/binary>>,
     select_2(DB, Query).
 
-write_batch(DB, Measurements, Values) ->
-    Line = compose_batch(Measurements, Values),
+write_batch(DB, Data) when is_list(Data) ->
+    Line = compose_batch_2(Data, <<>>),
     write(DB, Line).
 
 write(DB, Measurement, Value) ->
@@ -76,7 +76,7 @@ write(DB, Data) when is_list(Data) ->
 write(DB, Data) when is_binary(Data) ->
     Path = iolist_to_binary([<<"/write?db=">>, to_binary(DB)]),
     Fun = fun(W) ->
-                  fusco:request(W, Path, <<"POST">>, maybe_add_auth([?CT]), Data, 5000)
+        fusco:request(W, Path, <<"POST">>, maybe_add_auth([?CT]), Data, 5000)
           end,
     case poolboy:transaction(?POOL_NAME, Fun) of
         {ok, {{<<"204">>, _}, _Hdrs, _Resp, _, _}} -> ok;
@@ -100,16 +100,12 @@ maybe_add_auth(Headers) ->
             Headers
     end.
 
-compose_batch(Measurements, Values) ->
-    Zip = lists:zip(Measurements, Values),
-    compose_batch_2(Zip, <<>>).
-
 compose_batch_2([], Acc) ->
     Acc;
-compose_batch_2([{Measurement, Value}], Acc) ->
-    <<Acc/binary, (line(Measurement, Value))/binary>>;
-compose_batch_2([{Measurement, Value} | Rest], Acc) ->
-    NewAcc = <<Acc/binary, (line(Measurement, Value))/binary, "\n">>,
+compose_batch_2([{Measurement, Tags, Values, TimeStamp}], Acc) ->
+    <<Acc/binary, (line(Measurement, Tags, Values, TimeStamp))/binary>>;
+compose_batch_2([{Measurement, Tags, Values, TimeStamp} | Rest], Acc) ->
+    NewAcc = <<Acc/binary, (line(Measurement, Tags, Values, TimeStamp))/binary, "\n">>,
     compose_batch_2(Rest, NewAcc).
 
 line(Measurement, Value) ->
@@ -117,7 +113,7 @@ line(Measurement, Value) ->
 
 line(Measurement, Tags, Values) ->
     iolist_to_binary([to_binary(Measurement), <<",">>, compose_tags(Tags),
-                      <<" ">>, compose_tags(Values)]).
+        <<" ">>, compose_tags(Values)]).
 
 line(Measurement, Tags, Values, TimeStamp) ->
     BinLine = line(Measurement, Tags, Values),
@@ -137,7 +133,7 @@ query(Query) when is_binary(Query) ->
 query_2(Query) when is_binary(Query) ->
     Query2 = binary:replace(Query, <<" ">>, <<"%20">>, [global]),
     Fun = fun(W) ->
-                  fusco:request(W, Query2, <<"GET">>, maybe_add_auth([]), [], 5000)
+        fusco:request(W, Query2, <<"GET">>, maybe_add_auth([]), [], 5000)
           end,
     case poolboy:transaction(?POOL_NAME, Fun) of
         {ok, {{<<"200">>, _}, _Hdrs, Resp, _, _}} ->
