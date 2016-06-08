@@ -113,7 +113,7 @@ line(Measurement, Value) ->
 
 line(Measurement, Tags, Values) ->
     iolist_to_binary([to_binary(Measurement), <<",">>, compose_tags(Tags),
-        <<" ">>, compose_tags(Values)]).
+        <<" ">>, compose_values(Values)]).
 
 line(Measurement, Tags, Values, TimeStamp) ->
     BinLine = line(Measurement, Tags, Values),
@@ -154,6 +154,18 @@ compose_tags([{Key, Value} | Rest], Acc) ->
     NewAcc = <<(to_binary(Key))/binary, "=", (to_binary(Value))/binary, ",", Acc/binary>>,
     compose_tags(Rest, NewAcc).
 
+compose_values(Values) ->
+    compose_values(Values, <<>>).
+
+compose_values([], Acc) ->
+    Acc;
+compose_values([{Key, Value} | Rest], <<>>) ->
+    NewAcc = <<(to_binary(Key))/binary, "=", (to_number_binary(Value))/binary>>,
+    compose_values(Rest, NewAcc);
+compose_values([{Key, Value} | Rest], Acc) ->
+    NewAcc = <<(to_binary(Key))/binary, "=", (to_number_binary(Value))/binary, ",", Acc/binary>>,
+    compose_values(Rest, NewAcc).
+
 compose_cols([], Acc) ->
     Acc;
 compose_cols([Col | Cols], <<>>) ->
@@ -165,6 +177,21 @@ maybe_integer(Value) when is_integer(Value) ->
     <<(to_binary(Value))/binary, "i">>;
 maybe_integer(Value) ->
     to_binary(Value).
+
+to_number_binary(Value) when is_binary(Value) ->
+    to_binary(binary_to_number(Value));
+to_number_binary(Value) ->
+    to_binary(Value).
+
+binary_to_number(Bin) ->
+    list_to_number(binary_to_list(Bin)).
+
+list_to_number(List) ->
+    try list_to_float(List)
+    catch
+        error:badarg ->
+            list_to_integer(List)
+    end.
 
 to_binary(Value) when is_integer(Value) ->
     integer_to_binary(Value);
