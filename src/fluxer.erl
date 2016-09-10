@@ -74,7 +74,7 @@ write(DB, Measurement, Tags, Values, TimeStamp) ->
     write_lines(DB, line(Measurement, Tags, Values, TimeStamp)).
 
 
--spec write(binary()|list(), list()) -> ok | delivery_failed | any().
+-spec write_lines(binary()|list(), list()) -> ok | delivery_failed | any().
 write_lines(DB, Data) ->
     write_lines(DB, Data, undefined);
 write_lines(DB, Data) when is_list(Data) ->
