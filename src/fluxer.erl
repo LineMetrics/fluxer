@@ -5,7 +5,7 @@
 -export([create_database/1]).
 -export([create_database/2]).
 -export([show_databases/0]).
--export([write/2, write/3, write/4, write/5]).
+-export([write/3, write/4, write/5]).
 -export([write_batch/2]).
 -export([select/2, select/3]).
 -export([query/2]).
@@ -57,29 +57,43 @@ select(DB, Measurement, Cols) ->
     select_2(DB, Query).
 
 write_batch(DB, Data) when is_list(Data) ->
+    write_batch(DB, Data, undefined).
+write_batch(DB, Data, Precision) when is_list(Data) ->
     Line = compose_batch_2(Data, <<>>),
-    write(DB, Line).
+    write_lines(DB, Line, Precision).
 
 write(DB, Measurement, Value) ->
     write(DB, Measurement, [], Value).
 
 write(DB, Measurement, [], Value) ->
-    write(DB, line(Measurement, Value));
+    write_lines(DB, line(Measurement, Value));
 write(DB, Measurement, Tags, Values) ->
-    write(DB, line(Measurement, Tags, Values)).
+    write_lines(DB, line(Measurement, Tags, Values)).
 
 write(DB, Measurement, Tags, Values, TimeStamp) ->
-    write(DB, line(Measurement, Tags, Values, TimeStamp)).
+    write_lines(DB, line(Measurement, Tags, Values, TimeStamp)).
 
-write(DB, Data) when is_list(Data) ->
-    write(DB, list_to_binary(Data));
-write(DB, Data) when is_binary(Data) ->
-    Path = iolist_to_binary([<<"/write?db=">>, to_binary(DB)]),
+
+-spec write(binary()|list(), list()) -> ok | delivery_failed | any().
+write_lines(DB, Data) ->
+    write_lines(DB, Data, undefined);
+write_lines(DB, Data) when is_list(Data) ->
+    write_lines(DB, list_to_binary(Data), undefined).
+
+write_lines(DB, Data, Prec) when is_binary(Data) ->
+    IO0 = case is_binary(Prec) of
+              true -> [<<"&precision=", Prec/binary>>];
+              false -> []
+          end,
+    Path = iolist_to_binary([[<<"/write?db=">>, to_binary(DB)] | IO0]),
     Fun = fun(W) ->
         fusco:request(W, Path, <<"POST">>, maybe_add_auth([?CT]), Data, 5000)
           end,
     case poolboy:transaction(?POOL_NAME, Fun) of
-        {ok, {{<<"204">>, _}, _Hdrs, _Resp, _, _}} -> ok;
+        {ok, {{<<"204">>, _}, _Hdrs, _Resp, _, _}} ->               ok;
+        {ok, {{<<"200">>, _}, _Hdrs, _Resp, _, _}} ->               failed;
+        {ok, {{<<"4", _R:2/binary>>, _}, _Hdrs, _Resp, _, _}} ->    {error, _Resp};
+        {ok, {{<<"5", _R:2/binary>>, _}, _Hdrs, _Resp, _, _}} ->    failed;
         Error -> Error
     end.
 
