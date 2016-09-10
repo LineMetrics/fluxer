@@ -86,7 +86,7 @@ write_lines(DB, Data, Prec) when is_binary(Data) ->
               false -> []
           end,
     Path = iolist_to_binary([[<<"/write?db=">>, to_binary(DB)] | IO0]),
-    lager:info("fluxer request: ~p",[Path]),
+    io:format("fluxer request: ~p",[Path]),
     Fun = fun(W) ->
         fusco:request(W, Path, <<"POST">>, maybe_add_auth([?CT]), Data, 5000)
           end,
