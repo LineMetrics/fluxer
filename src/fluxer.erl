@@ -6,7 +6,7 @@
 -export([create_database/2]).
 -export([show_databases/0]).
 -export([write/3, write/4, write/5]).
--export([write_batch/2]).
+-export([write_batch/2, write_batch/3]).
 -export([select/2, select/3]).
 -export([query/2]).
 
