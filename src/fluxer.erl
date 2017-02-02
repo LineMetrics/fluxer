@@ -8,7 +8,7 @@
 -export([write/3, write/4, write/5]).
 -export([write_batch/2, write_batch/3]).
 -export([select/2, select/3]).
--export([query/2]).
+-export([query/2, query_epoch_ms/2]).
 
 -define(POOL_NAME, fluxer_pool).
 -define(CT, {<<"Content-Type">>, <<"text/plain">>}).
@@ -97,6 +97,9 @@ write_lines(DB, Data, Prec) when is_binary(Data) ->
 
 query(DB, Query) ->
     query_2(iolist_to_binary([<<"/query?db=">>, to_binary(DB), <<"&q=">>, to_binary(Query)])).
+
+query_epoch_ms(DB, Query) ->
+    query_2(iolist_to_binary([<<"/query?epoch=ms&db=">>, to_binary(DB), <<"&q=">>, to_binary(Query)])).
 
 %%====================================================================
 %% Internal functions
